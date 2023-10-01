@@ -1,0 +1,1 @@
+This module experiments with transfer learning of a pytorch implementation of a resnet18 classifier as a fixed feature extractor and as a finetuned model. 
