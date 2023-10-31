@@ -9,6 +9,7 @@ from tqdm import tqdm
 import numpy as np
 from sklearn.model_selection import StratifiedShuffleSplit
 
+# the dataset class accompanies outputs returned by dataset_split function
 class VideoDataset(Dataset):
     def __init__(self, vid_dataset, fr_per_vid, transforms=None):
         self.dataset = vid_dataset

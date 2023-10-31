@@ -25,7 +25,7 @@ def args_parser():
 
     parser.add_argument('-c', '--ckpt', help='path for loading trained model checkpoints')
     parser.add_argument('-mt', '--model_type', help='3D CNN or LRCN', default='lrcn')
-    parser.add_argument('-cnn', '--cnn_backbone', default='resnet34', help='2D CNN backbone - ResNet: resnet18, resnet34, resnet50, resnet101, resnet152')
+    parser.add_argument('-cnn', '--cnn_backbone', default='resnet18', help='2D CNN backbone - ResNet: resnet18, resnet34, resnet50, resnet101, resnet152')
     parser.add_argument('-p', '--pretrained', help='use pretrained 2D CNN backbone', default=True)
     parser.add_argument('-rhs', '--rnn_hidden_size', type=int, default=100, help='number of neurons in the RNN/LSTM hidden layer')
     parser.add_argument('-rnl', '--rnn_n_layers', type=int, default=1, help='number of RNN/LSTM layers')
@@ -35,10 +35,12 @@ def args_parser():
     parser.add_argument('-d', '--dropout', type=float, default=0.1, help='dropout rate for regularization')
     parser.add_argument('-lr', '--learning_rate', type=float, default=3e-5, help='learning rate for the model training')
     parser.add_argument('-ne', '--n_epochs', type=int, default=30, help='number of training epochs')
-
+    parser.add_argument('-ca', '--all_cats_path', type=str, default='../data/UCF50/')
     args = parser.parse_args()
 
     return args
+
+# def get_confusion_matrix_from_dict():
 
 def main(args):
     # dataset parameters
@@ -47,7 +49,8 @@ def main(args):
     ts_size = args.test_size
     fr_per_vid = args.fr_per_vid
     n_classes = args.n_classes
-
+    all_cats = os.listdir(args.all_cats_path)
+    
     # model parameters
     model_type = args.model_type
     rnn_hidden_size = args.rnn_hidden_size
@@ -63,7 +66,6 @@ def main(args):
     n_epochs = args.n_epochs
     learning_rate = args.learning_rate
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
     # load statistics for data augmentation
     h, w, mean, std = transform_stats(model_type)
     tr_transforms, val_ts_transforms = compose_data_transforms(h, w, mean, std)
@@ -96,25 +98,38 @@ def main(args):
 
         # main training procedure
         model.to(device)
-        model, loss_hist, acc_hist = train(dataloaders, model, loss_func, opt, lr_scheduler, device, optim_model_dir, n_epochs)
+        model, loss_hist, acc_hist = train(dataloaders, model, loss_func, opt, 
+                                           lr_scheduler, device, optim_model_dir, n_epochs)
 
     elif mode=='eval':
         splits = np.load('./splits.npy', allow_pickle=True)
         ts_split = splits.item()['test']
         ts_split = [(sample[0], int(sample[1])) for sample in ts_split]
-
+        # print(ts_split)
+        
         # create datasets and dataloaders for test split
         ts_dataset = VideoDataset(ts_split, fr_per_vid, val_ts_transforms)
         dataloaders = test_dloaders(ts_dataset, batch_size, model_type)
+        
 
         # load trained model checkpoint
         model.load_state_dict(torch.load(args.ckpt))
         model.to(device)
         targets, outputs, accuracy = test(model, dataloaders['test'], device)
-
+        
         print('The overall test accuracy is {:.4f}%.'.format(100*accuracy))
-        # print( get_test_report(targets, outputs, all_cats) )
-        # print(get_confusion_matrix(targets, outputs, labels_dict, all_cats))
+        
+        # labels_dict = get_test_report(targets, outputs, all_cats)
+        performance_metrics = get_test_report(targets, outputs, all_cats) 
+        # print('\nPerformance Metrics: \n', performance_metrics)
+        
+        ##iterate
+        labels_dict = dict()
+        for i, cat in enumerate(all_cats):
+            labels_dict[i] = cat
+        print(labels_dict)
+            
+        print(get_confusion_matrix(targets, outputs, labels_dict, all_cats))
 
     else:
         raise ValueError('The mode argument must be either train or eval....')

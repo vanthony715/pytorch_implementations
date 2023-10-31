@@ -1,5 +1,7 @@
+import torch
 import torch.nn as nn
 from torchvision import models
+from torchvision.models import resnet50, ResNet50_Weights
 
 # utility for replacing the original fc layer in ResNet backbone
 # reference: https://discuss.pytorch.org/t/how-to-delete-layer-in-pretrained-model/17648
@@ -11,7 +13,7 @@ class Identity(nn.Module):
         return x
 
 class LRCN(nn.Module):
-    def __init__(self, hidden_size, n_layers, dropout_rate, n_classes, pretrained=True, cnn_model='resnet34'):
+    def __init__(self, hidden_size, n_layers, dropout_rate, n_classes, pretrained=True, cnn_model='resnet50'):
         super(LRCN, self).__init__()
 
         # set up ResNet backbone as 2D CNN feature extractors
@@ -20,7 +22,7 @@ class LRCN(nn.Module):
         elif cnn_model=='resnet34':
             base_cnn = models.resnet34(pretrained=pretrained)
         elif cnn_model=='resnet50':
-            base_cnn = models.resnet50(pretrained=pretrained)
+            base_cnn = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
         elif cnn_model=='resnet101':
             base_cnn = models.resnet101(pretrained=pretrained)
         elif cnn_model=='resnet152':
@@ -35,7 +37,7 @@ class LRCN(nn.Module):
         self.dropout = nn.Dropout(dropout_rate)
         self.fc = nn.Linear(hidden_size, n_classes)
 
-    def forward(self, x):
+    def forward(self, x): 
         bs, ts, c, h, w = x.shape                       # batch_size, time_steps, channel, height, width
         idx = 0
         y = self.base_model((x[:, idx]))
@@ -46,3 +48,4 @@ class LRCN(nn.Module):
         out = self.dropout(out[:, -1])
         out = self.fc(out)
         return out
+       

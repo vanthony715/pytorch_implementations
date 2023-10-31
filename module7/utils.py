@@ -12,10 +12,10 @@ def get_frames(vid, n_frames=1):
     v_cap = cv2.VideoCapture(vid)
     v_len = int(v_cap.get(cv2.CAP_PROP_FRAME_COUNT))
     frame_idx = np.linspace(0, v_len-1, n_frames+1, dtype=np.int16)    # uniform sampling
-    
+
     for idx in range(v_len):
-        success, frame = v_cap.read() 
-        if success is False: 
+        success, frame = v_cap.read()
+        if success is False:
             continue
         if idx in frame_idx:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)             # convert frame tensor to RGB format
@@ -26,7 +26,7 @@ def get_frames(vid, n_frames=1):
 # given sampled array of frames, physically save frame as JPG images
 def store_frames(frames, store_path):
     for idx, frame in enumerate(frames):
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)                 # convert frame tensor back to BGR format for saving 
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)                 # convert frame tensor back to BGR format for saving
         path_to_frame = os.path.join(store_path, "frame{}.jpg".format(idx))
         cv2.imwrite(path_to_frame, frame)
 
@@ -51,8 +51,10 @@ def transform_stats(model='lrcn'):
 def compose_data_transforms(height, width, mean, std):
     train_transforms = transforms.Compose([
                 transforms.Resize((height, width)),
+                transforms.CenterCrop(10),
                 transforms.RandomHorizontalFlip(p=0.5),
-                transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+                transforms.RandomAffine(degrees=10, translate=(0.1, 0.1)),
+                transforms.RandomResizedCrop(size=(224, 224), antialias=True),
                 transforms.ToTensor(),
                 transforms.Normalize(mean, std), ])
     val_test_transforms = transforms.Compose([
@@ -61,20 +63,28 @@ def compose_data_transforms(height, width, mean, std):
                 transforms.Normalize(mean, std), ])
     return train_transforms, val_test_transforms
 
-def compose_dataloaders(train_dataset, val_dataset, test_dataset, batch_size, model='lrcn'):
+def train_val_dloaders(train_dataset, val_dataset, batch_size, model='lrcn'):
     if model == "lrcn":
         train_dl = DataLoader(train_dataset, batch_size=batch_size,
                               shuffle=True, collate_fn=collate_fn_rnn)
         val_dl = DataLoader(val_dataset, batch_size=2*batch_size,
                             shuffle=False, collate_fn=collate_fn_rnn)
-        test_dl = DataLoader(test_dataset, batch_size=2*batch_size,
-                             shuffle=False, collate_fn=collate_fn_rnn)
     else:
         train_dl = DataLoader(train_dataset, batch_size=batch_size,
                               shuffle=True, collate_fn=collate_fn_r3d_18)
         val_dl = DataLoader(val_dataset, batch_size=2*batch_size,
                             shuffle=False, collate_fn=collate_fn_r3d_18)
+    dataloaders = {'train':train_dl, 'val':val_dl,}
+
+    return dataloaders
+
+def test_dloaders(test_dataset, batch_size, model='lrcn'):
+    if model == "lrcn":
+        test_dl = DataLoader(test_dataset, batch_size=2*batch_size,
+                             shuffle=False, collate_fn=collate_fn_rnn)
+    else:
         test_dl = DataLoader(test_dataset, batch_size=2*batch_size,
                              shuffle=False, collate_fn=collate_fn_r3d_18)
-    dataloaders = {'train':train_dl, 'val':val_dl, 'test':test_dl}
+    dataloaders = {'test':test_dl}
+
     return dataloaders

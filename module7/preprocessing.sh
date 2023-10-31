@@ -1,5 +1,5 @@
 #!/bin/bash
 python preprocess.py \
-    --dataset_dir /home/vince/datasets/raw_data/HMDB51 \
-    --frame_dir /home/vince/datasets/preprocessed_data/HMDB51 \
-    --n_frames 20
+    --dataset_dir /home/tony/deep_learning_dev_w_pytorch/data/UCF50 \
+    --frame_dir /home/tony/deep_learning_dev_w_pytorch/data/UCF50 \
+    --n_frames 31

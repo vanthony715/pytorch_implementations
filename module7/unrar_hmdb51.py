@@ -14,6 +14,6 @@ def unrar_dataset(src, dest_dir):
             os.remove(rar_path)
 
 if __name__=="__main__":
-    src_path = '/home/vince/datasets/src_data/hmdb51_org.rar'
-    dest_path = '/home/vince/datasets/raw_data/HMDB51'
+    src_path = '/home/tony/deep_learning_dev_w_pytorch/data/UCF50.rar'
+    dest_path = '/home/tony/deep_learning_dev_w_pytorch/data/UCF50'
     unrar_dataset(src_path, dest_path)
