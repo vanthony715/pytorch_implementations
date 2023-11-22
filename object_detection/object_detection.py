@@ -2,7 +2,8 @@
 """
 @author: vanthony715@gmail.com
 """
-import sys, time
+import gc, sys, time
+gc.collect()
 
 sys.path.append('srcutils/')
 
@@ -86,7 +87,11 @@ if __name__=="__main__":
     def get_transform(train):
         transforms = []
         if train:
+            ##only do this for training image
             transforms.append(T.RandomHorizontalFlip(0.5))
+
+        ##following transforms for all images
+        transforms.append(T.Resize((256, 256), antialias=True)) ##increase training time
         transforms.append(T.ToDtype(torch.float, scale=True))
         transforms.append(T.ToPureTensor())
         return T.Compose(transforms)
@@ -95,7 +100,7 @@ if __name__=="__main__":
     trainset = OxfordIIITDataset(trainpath, get_transform(train=True), class_dict)
     trainloader = torch.utils.data.DataLoader(
         trainset,
-        batch_size=12,
+        batch_size=48,
         shuffle=True,
         num_workers=4,
         collate_fn=utils.collate_fn)
@@ -103,7 +108,7 @@ if __name__=="__main__":
     valset = OxfordIIITDataset(valpath, get_transform(train=False), class_dict)
     valloader = torch.utils.data.DataLoader(
         valset,
-        batch_size=12,
+        batch_size=48,
         shuffle=True,
         num_workers=4,
         collate_fn=utils.collate_fn)
@@ -119,13 +124,16 @@ if __name__=="__main__":
     step_size = 3
     gamma = 0.1
     num_epochs = 5
+    print_freq = 5
 
     ##define optimizer
     params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.SGD(params, lr=lr, momentum=momentum, weight_decay=weight_decay)
+    optimizer = torch.optim.SGD(params, lr=lr, momentum=momentum,
+                                weight_decay=weight_decay)
 
     ##define learning rate scheduler
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size,
+                                                   gamma=gamma)
 
     ##DEBUG
     # print('\nModel: ', model)
@@ -135,11 +143,14 @@ if __name__=="__main__":
 
     ##use train_one_epoch in pycocotools to iterate over train epochs
     for epoch in range(num_epochs):
-        # train for one epoch, printing every 10 iterations
-        train_one_epoch(model, optimizer, trainloader, device, epoch, print_freq=10)
-        # update the learning rate
+
+        ##train and print every X iterations
+        train_one_epoch(model, optimizer, trainloader, device, epoch,
+                        print_freq=print_freq)
+        ##learning-rate update
         lr_scheduler.step()
-        # evaluate on the test dataset
+
+        ##evaluate using validation set
         evaluate(model, valloader, device=device)
 
     ##save model
@@ -147,13 +158,13 @@ if __name__=="__main__":
     torch.save(model.state_dict(), model_savepath)
 
     ##run eval on one image
-    image = read_image("../../data/PennFudanPed/FudanPed00036.png")
+    image = read_image("./test_img/american_pit_bull_terrier_144.jpg")
     eval_transform = get_transform(train=False)
 
     model.eval()
     with torch.no_grad():
         x = eval_transform(image)
-        # convert RGBA -> RGB and move to device
+        ##RGBA -> RGB if is RGBA
         x = x[:3, ...].to(device)
         predictions = model([x, ])
         pred = predictions[0]
@@ -163,8 +174,11 @@ if __name__=="__main__":
     image = image[:3, ...]
 
     ##get prediction labels
-    pred_labels = [f"pedestrian: {score:.3f}" for label, score in zip(pred["labels"], pred["scores"])]
+    pred_labels = [f"Clss: {label} Conf: {score:.3f}" for label,
+                   score in zip(pred["labels"], pred["scores"])]
 
+    idx_to_str_clss_dict = {0: 'cat', 1: 'dog'}
+    print('Labels Key: ', idx_to_str_clss_dict)
     ##get predicted bboxes
     pred_boxes = pred["boxes"].long()
     output_image = draw_bounding_boxes(image, pred_boxes, pred_labels, colors="red")
@@ -178,3 +192,4 @@ if __name__=="__main__":
     ##stop timer
     tf = time.time()
     print('Code took: ', np.round((tf-t0), 3))
+    gc.collect()
