@@ -82,7 +82,6 @@ if __name__=="__main__":
 
     ##put model on GPU
     model.to(device)
-    num_classes = 2
 
     def get_transform(train):
         transforms = []
