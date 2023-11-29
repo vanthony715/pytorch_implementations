@@ -19,7 +19,6 @@ from torchvision.io import read_image
 from torchvision.transforms import v2 as T
 from torchvision.utils import draw_bounding_boxes
 from torchvision.models.detection.rpn import AnchorGenerator
-from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
 from engine import train_one_epoch, evaluate
 
@@ -76,10 +75,6 @@ if __name__=="__main__":
     split_obj = Splitter(datapath)
     split_obj.split_dataset()
 
-    ##define detection model and load pretrained weights
-    weights = "DEFAULT"
-    # model = torchvision.models.detection.fasterrcnn_mobilenet_v3_large_fpn(weights=weights)
-
     ##modify model anchors and backbone
     # backbone = torchvision.models.mobilenet_v2(weights="DEFAULT").features
     backbone = torchvision.models.vit_b_16(pretrained=True)
@@ -100,8 +95,10 @@ if __name__=="__main__":
     ##string model together
     from torchvision.models.detection import fasterrcnn_mobilenet_v3_large_fpn
     num_classes = 2
+    ##define detection model and load pretrained weights
+    weights = "DEFAULT"
     model = fasterrcnn_mobilenet_v3_large_fpn(backbone,
-                                              weights="DEFAULT",
+                                              weights=weights,
                                               box_roi_pool=roi_pooler)
 
     ##put model on GPU
