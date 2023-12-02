@@ -1,61 +1,79 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Nov 17 12:02:51 2023
-
-@author: vanth
+@author: vanthony715@gmail.com
 """
 import os
+import numpy as np
+
 import torch
-import xml.etree.ElementTree as ET
-
-from torchvision.io import read_image
 from torchvision import tv_tensors
+# import torchvision.transforms.functional as F
 from torchvision.transforms.v2 import functional as F
+from torchvision.io import read_image
+from torch.utils.data import Dataset
 
-class OxfordIIITDataset(torch.utils.data.Dataset):
-    def __init__(self, root, transforms, class_dict):
+class CustomImageDatasetObjectDetection(Dataset):
+    def __init__(self, root, transforms):
         self.root = root
         self.transforms = transforms
-        # load all image files, sorting them to
-        # ensure that they are aligned
         self.imgs = list(sorted(os.listdir(os.path.join(root, "images"))))
         self.annots = list(sorted(os.listdir(os.path.join(root, "annotations"))))
-        self.class_dict = class_dict
 
-    def _parse_xml(self, filepath):
-        tree = ET.parse(filepath)
-        root = tree.getroot()
-        classname = self.class_dict[list(list(root)[5])[0].text]
-        x_min = int(list(list(list(root)[5])[4])[0].text)
-        y_min = int(list(list(list(root)[5])[4])[1].text)
-        x_max = int(list(list(list(root)[5])[4])[2].text)
-        y_max = int(list(list(list(root)[5])[4])[3].text)
-        return (classname, x_min, y_min, x_max, y_max)
+    def _xywh_to_xyxy(self, x, y, w, h):
+        return x, y, x+w, y+h
+
+    def _parse_txt(self, filepath):
+        ##get labels and bboxes
+        labels, bboxes = [], []
+
+        ##parse text file
+        with open(filepath, 'r') as f:
+            lines = f.readlines()
+
+        ##get labels and bboxes seperately
+        for line in lines:
+            labels.append(int(line[0]))
+            bboxes.append(line[2:].split(' '))
+
+        ##remove strings from bbox coordinates
+        converted_bboxes = []
+        for i, boxes in enumerate(bboxes):
+            ##convert bbox strings to float coordinates
+            try:
+                box = list([i.replace('\n', '') for i in boxes])
+            except:
+                pass
+            box = [float(i) for i in box]
+
+            ##convert to xyxy format
+            x, y, w, h = box
+            xyxy_coords = self._xywh_to_xyxy(x, y, w, h)
+            for i, coord in enumerate(xyxy_coords):
+                box[i] = coord
+                # print(box)
+
+            converted_bboxes.append(box)
+        # print(bboxes)
+        return labels, converted_bboxes
 
     def __getitem__(self, idx):
         ## load image and annotations
-        ##It is assumed that there is only one pet in each image
         img_path = os.path.join(self.root, "images", self.imgs[idx])
         annot_path = os.path.join(self.root, "annotations", self.annots[idx])
         img = read_image(img_path)
 
         ##tuple contains class and bbox info
-        target_data = self._parse_xml(annot_path)
-        xmin, ymin = target_data[1], target_data[2]
-        xmax, ymax = target_data[3], target_data[4]
-        bboxes = list([xmin, ymin, xmax, ymax])
-        labels = list(target_data)
+        target_data, bboxes = self._parse_txt(annot_path)
         image_id = idx
-
 
         ##Wrap sample and targets into torchvision tv_tensors
         img = tv_tensors.Image(img)
 
         ##target tensor
         target = {}
-        target["area"] = torch.as_tensor([0])
-        target["iscrowd"] = torch.as_tensor([False])
-        target["labels"] = torch.as_tensor(labels)
+        target["area"] = torch.as_tensor(np.zeros(len(bboxes)))
+        target["iscrowd"] = torch.as_tensor([False for i in range(len(bboxes))])
+        target["labels"] = torch.as_tensor(target_data)
         target["image_id"] = image_id
         target["boxes"] = tv_tensors.BoundingBoxes(bboxes, format="XYXY",
                                                    canvas_size=F.get_size(img))
@@ -67,3 +85,29 @@ class OxfordIIITDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.imgs)
+
+    def collate_fn(self, batch):
+        return tuple(zip(*batch))
+
+    # def collate_fn(self, batch):
+    #     """
+    #     Custom Collate of Object Detection
+
+    #     Credit:
+    #         https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/eval.py
+    #     """
+
+    #     images = list()
+    #     boxes = list()
+    #     labels = list()
+
+    #     for b in batch:
+    #         images.append(b[0])
+    #         boxes.append(b[1])
+    #         labels.append(b[2])
+
+    #     images = torch.stack(images, dim=0)
+
+    #     print(images.shape)
+
+    #     return images[0], boxes[0], labels[0]  # tensor (N, 3, 300, 300), 3 lists of N tensors each

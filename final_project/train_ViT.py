@@ -53,35 +53,22 @@ if __name__ == "__main__":
 
 
     ##initialize datasets
-    train_data = CustomImageDatasetObjectDetection(trainpath + 'labels/',
-                                                   trainpath + 'images/',
-                                                   transform=get_transform(train=True))
+    train_data = CustomImageDatasetObjectDetection(trainpath,
+                                                   transforms=get_transform(train=True))
 
-    val_data = CustomImageDatasetObjectDetection(valpath + 'labels/',
-                                                 valpath + 'images/',
-                                                 transform=get_transform(train=False))
+    val_data = CustomImageDatasetObjectDetection(valpath,
+                                                 transforms=get_transform(train=False))
 
     ##define dataloaders
-    trainloader = DataLoader(train_data, batch_size=8, collate_fn=train_data.collate_fn,
+    trainloader = DataLoader(train_data, batch_size=32, collate_fn=train_data.collate_fn,
                               shuffle=True)
 
-    valloader = DataLoader(val_data, batch_size=8, collate_fn=val_data.collate_fn,
+    valloader = DataLoader(val_data, batch_size=32, collate_fn=val_data.collate_fn,
                             shuffle=True)
 
-    ##sanity check
-    # Display image and label.
-    images, targets, boxes = next(iter(valloader))
-    print('Data size: ', images.shape)
-    print('Labels size: ', targets.shape)
-    print('Boxes size: ', boxes.shape)
-    img = images[0].squeeze()
-    label = targets[0]
-    plt.imshow(img, cmap="gray")
-    plt.show()
-    print(f"Label: {label}")
 
     from vit_pytorch.nest import NesT
-    num_classes = 2
+    num_classes = 10
     backbone = NesT(image_size = 224, patch_size = 4, dim = 96, heads = 3,
                 num_hierarchies = 3,
                 block_repeats = (2, 2, 8),
@@ -102,11 +89,16 @@ if __name__ == "__main__":
     weights = "FasterRCNN_MobileNet_V3_Small_FPN_Weights.DEFAULT"
     model = fasterrcnn_mobilenet_v3_large_fpn(backbone,
                                               weights=weights,
-                                              box_roi_pool=roi_pooler)
+                                              box_roi_pool=roi_pooler).to(device)
 
     ##sanity check
-    images, targets, boxes = next(iter(trainloader))
-    images, targets, boxes = next(iter(valloader))
+    images, targets = next(iter(trainloader))
+    images, targets = next(iter(valloader))
+
+    print('Num Images: ', len(images))
+    print('Num Targets: ', len(targets))
+    print('Shape of Images ', images[0].shape)
+    print('Shape of Targets ', targets[0]['labels'].shape)
 
     ##hyperparameters
     lr = 0.005
@@ -114,8 +106,8 @@ if __name__ == "__main__":
     weight_decay = 0.0005
     step_size = 3
     gamma = 0.1
-    num_epochs = 1
-    print_freq = 5
+    num_epochs = 10
+    print_freq = 10
 
     ##define optimizer
     params = [p for p in model.parameters() if p.requires_grad]
