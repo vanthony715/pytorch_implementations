@@ -153,7 +153,7 @@ if __name__=="__main__":
         evaluate(model, valloader, device=device)
 
     ##save model
-    model_savepath = './model_' + str('_epochs.pt')
+    model_savepath = './model_' + str(epoch) + '.pt'
     torch.save(model.state_dict(), model_savepath)
 
     ##run eval on one image

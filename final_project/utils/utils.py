@@ -48,6 +48,9 @@ def write_labels(writepath, classes, xcoords, ycoords, sample_img_shape, noise_i
         ycoord = ycoord/noise_img_shape[1]
 
         ##write to string
+        ##make sure to shift class to class + 1 since background is class zero
+        if clss == 0:
+            clss = 10
         writestring1 = str(clss) + ' ' + str(xcoord) + ' ' + str(ycoord) + ' '
         writestring2 = str(width) + ' ' + str(height)
         if i < len(classes) - 1:

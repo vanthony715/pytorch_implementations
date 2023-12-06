@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import torch
 import torchvision
 from torch.utils.data import DataLoader
+from torchvision.io import read_image
 from torchvision.transforms import v2
 from torchvision.transforms import v2 as T
 from torchvision.utils import draw_bounding_boxes
@@ -31,6 +32,7 @@ from engine import train_one_epoch, evaluate
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 if __name__ == "__main__":
+    t0 = time.time()
 
     ##define paths
     basepath = "C:/Users/vanth/OneDrive/Desktop/JHUClasses/data/numbers_mnist/"
@@ -66,9 +68,9 @@ if __name__ == "__main__":
     valloader = DataLoader(val_data, batch_size=32, collate_fn=val_data.collate_fn,
                             shuffle=True)
 
-
+    ##define backbone
     from vit_pytorch.nest import NesT
-    num_classes = 10
+    num_classes = 11
     backbone = NesT(image_size = 224, patch_size = 4, dim = 96, heads = 3,
                 num_hierarchies = 3,
                 block_repeats = (2, 2, 8),
@@ -106,7 +108,7 @@ if __name__ == "__main__":
     weight_decay = 0.0005
     step_size = 3
     gamma = 0.1
-    num_epochs = 10
+    num_epochs = 5
     print_freq = 10
 
     ##define optimizer
@@ -136,7 +138,48 @@ if __name__ == "__main__":
         ##evaluate using validation set
         evaluate(model, valloader, device=device)
 
-    ##put model on GPU
-    ##test model
-    # model.eval()
-    # pred = model(img) # (1, 1000)
+    ##save model
+    model_savepath = './vit_' + str(epoch) + '.pt'
+    torch.save(model.state_dict(), model_savepath)
+
+    ##load model
+    model.load_state_dict(torch.load(model_savepath))
+
+    ##run eval on one image
+    image = read_image("./test_imgs/mnist_noise_000010.png")
+    eval_transform = get_transform(train=False)
+
+    model.eval()
+    with torch.no_grad():
+        x = eval_transform(image)
+        ##RGBA -> RGB if is RGBA
+        x = x[:3, ...].to(device)
+        predictions = model([x, ])
+        pred = predictions[0]
+
+    ##convert image prior to torch tensor
+    image = (255.0 * (x - x.min()) / (x.max() - x.min())).to(torch.uint8)
+    image = image[:3, ...]
+
+    ##get prediction labels
+    pred_labels = [f"Clss: {label} Conf: {score:.3f}" for label,
+                   score in zip(pred["labels"], pred["scores"])]
+
+    ##remember that class zero is always background
+    idx_to_str_clss_dict = {0: 'bg', 1: '1', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6',
+                            7: '7', 8: '8', 9: '9', 10: '0'}
+    print('Labels Key: ', idx_to_str_clss_dict)
+    ##get predicted bboxes
+    pred_boxes = pred["boxes"].long()
+    output_image = draw_bounding_boxes(image, pred_boxes, pred_labels, colors="red")
+
+    ##plot image
+    fig, axes = plt.subplots(1, 1)
+    axes.imshow(output_image.permute(1, 2, 0))
+    axes.set_title('Example of Inferenced Image')
+    plt.savefig('output_image_' + 'num_epochs_' + str(epoch) + '.png')
+
+    ##stop timer
+    tf = time.time()
+    print('Code took: ', np.round((tf-t0), 3))
+    gc.collect()

@@ -15,7 +15,7 @@ from utils import *
 if __name__ == "__main__":
     ##define paths
     # datapath = "C:/Users/vanth/OneDrive/Desktop/JHUClasses/data/numbers_mnist/"
-    datapath = "../../data/numbers_mnist/"
+    datapath = "../../../data/numbers_mnist/"
     trainwrite = "../../../data/numbers_mnist/train/images/"
     valwrite =  "../../../data/numbers_mnist/val/images/"
 

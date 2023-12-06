@@ -7,7 +7,6 @@ import numpy as np
 
 import torch
 from torchvision import tv_tensors
-# import torchvision.transforms.functional as F
 from torchvision.transforms.v2 import functional as F
 from torchvision.io import read_image
 from torch.utils.data import Dataset
@@ -20,7 +19,12 @@ class CustomImageDatasetObjectDetection(Dataset):
         self.annots = list(sorted(os.listdir(os.path.join(root, "annotations"))))
 
     def _xywh_to_xyxy(self, x, y, w, h):
-        return x, y, x+w, y+h
+        ##unnormalize coordinates (yolo use normalized coords)
+        wu = w * 256
+        hu = h * 256
+        xu = x * 256 - 0.5 * (wu)
+        yu = y * 256 - 0.5 * (hu)
+        return xu, yu, xu+wu, yu+hu
 
     def _parse_txt(self, filepath):
         ##get labels and bboxes
@@ -32,8 +36,15 @@ class CustomImageDatasetObjectDetection(Dataset):
 
         ##get labels and bboxes seperately
         for line in lines:
-            labels.append(int(line[0]))
-            bboxes.append(line[2:].split(' '))
+            ##check if single digit for class
+            if line[1] == '':
+                labels.append(int(line[0]))
+                bboxes.append(line[2:].split(' '))
+            ##assume that the class is two digit such as 10, 11, etc..
+            else:
+                labels.append(int(line[0:1]))
+                bboxes.append(line[3:].split(' '))
+
 
         ##remove strings from bbox coordinates
         converted_bboxes = []
