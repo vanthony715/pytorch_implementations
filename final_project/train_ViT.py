@@ -103,18 +103,21 @@ if __name__ == "__main__":
     print('Shape of Targets ', targets[0]['labels'].shape)
 
     ##hyperparameters
-    lr = 0.005
+    lr = 0.0001
     momentum = 0.9
     weight_decay = 0.0005
     step_size = 3
     gamma = 0.1
-    num_epochs = 5
-    print_freq = 10
+    num_epochs = 20
+    print_freq = 1000
 
     ##define optimizer
     params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.SGD(params, lr=lr, momentum=momentum,
-                                weight_decay=weight_decay)
+    # optimizer = torch.optim.SGD(params, lr=lr, momentum=momentum,
+    #                             weight_decay=weight_decay)
+    optimizer = torch.optim.Adam(params, lr=lr)
+    # optimizer = torch.optim.SGD(params, lr=lr, momentum=momentum,
+    #                             weight_decay=weight_decay)
 
     ##define learning rate scheduler
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size,
@@ -144,6 +147,9 @@ if __name__ == "__main__":
 
     ##load model
     model.load_state_dict(torch.load(model_savepath))
+
+    ##evaluate model
+
 
     ##run eval on one image
     image = read_image("./test_imgs/mnist_noise_000010.png")
