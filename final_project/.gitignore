@@ -1,2 +1,3 @@
 yolov8n.pt
-runs/
+runs/detect/train_vit/vit_10.pt
+runs/detect/train_yv8/weights/

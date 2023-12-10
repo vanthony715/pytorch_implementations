@@ -1,12 +1,12 @@
-path: C:/Users/vanth/OneDrive/Desktop/JHUClasses/data/numbers_mnist/
+path: C:/Users/vanth/OneDrive/Desktop/JHUClasses/data/numbers_mnist/yv8_dset/
 train: 'train/images'
 val: 'val/images'
 
-nc: 11
+nc: 10
 
 # class names
 names:
-  0: 'bg'
+  0: '0'
   1: '1'
   2: '2'
   3: '3'
@@ -16,4 +16,3 @@ names:
   7: '7'
   8: '8'
   9: '9'
-  10: '0'

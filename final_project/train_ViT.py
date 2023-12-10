@@ -19,7 +19,6 @@ import torch
 import torchvision
 from torch.utils.data import DataLoader
 from torchvision.io import read_image
-from torchvision.transforms import v2
 from torchvision.transforms import v2 as T
 from torchvision.utils import draw_bounding_boxes
 from torchvision.models.detection.rpn import AnchorGenerator
@@ -35,7 +34,7 @@ if __name__ == "__main__":
     t0 = time.time()
 
     ##define paths
-    basepath = "C:/Users/vanth/OneDrive/Desktop/JHUClasses/data/numbers_mnist/"
+    basepath = "C:/Users/vanth/OneDrive/Desktop/JHUClasses/data/numbers_mnist/vit_dset/"
     trainpath = basepath + 'train/'
     valpath = basepath + 'val/'
 
@@ -53,6 +52,15 @@ if __name__ == "__main__":
         transforms.append(T.ToPureTensor())
         return T.Compose(transforms)
 
+    ##hyperparameters
+    lr = 0.0001
+    momentum = 0.9
+    weight_decay = 0.0005
+    step_size = 3
+    gamma = 0.1
+    num_epochs = 10
+    print_freq = 100
+    batch_size = 144
 
     ##initialize datasets
     train_data = CustomImageDatasetObjectDetection(trainpath,
@@ -62,11 +70,11 @@ if __name__ == "__main__":
                                                  transforms=get_transform(train=False))
 
     ##define dataloaders
-    trainloader = DataLoader(train_data, batch_size=32, collate_fn=train_data.collate_fn,
-                              shuffle=True)
+    trainloader = DataLoader(train_data, batch_size=batch_size,
+                             collate_fn=train_data.collate_fn, shuffle=True)
 
-    valloader = DataLoader(val_data, batch_size=32, collate_fn=val_data.collate_fn,
-                            shuffle=True)
+    valloader = DataLoader(val_data, batch_size=batch_size,
+                           collate_fn=val_data.collate_fn, shuffle=True)
 
     ##define backbone
     from vit_pytorch.nest import NesT
@@ -86,12 +94,26 @@ if __name__ == "__main__":
                                                     sampling_ratio=2,)
 
     ##string model together
-    from torchvision.models.detection import fasterrcnn_mobilenet_v3_large_fpn
+    # from torchvision.models.detection import fasterrcnn_mobilenet_v3_large_fpn
     ##define detection model and load pretrained weights
-    weights = "FasterRCNN_MobileNet_V3_Small_FPN_Weights.DEFAULT"
-    model = fasterrcnn_mobilenet_v3_large_fpn(backbone,
-                                              weights=weights,
+    # weights = "FasterRCNN_MobileNet_V3_Small_FPN_Weights.DEFAULT"
+    # model = fasterrcnn_mobilenet_v3_large_fpn(backbone,
+    #                                           weights=weights,
+    #                                           box_roi_pool=roi_pooler).to(device)
+
+    from torchvision.models.detection import fasterrcnn_mobilenet_v3_large_320_fpn
+    model = fasterrcnn_mobilenet_v3_large_320_fpn(backbone,
+                                              weights="DEFAULT",
                                               box_roi_pool=roi_pooler).to(device)
+
+    # from torchvision.models.detection import ssdlite320_mobilenet_v3_large
+    # model = ssdlite320_mobilenet_v3_large(backbone,
+    #                                       weights="COCO_V1",
+    #                                       box_roi_pool=roi_pooler).to(device)
+
+    ##report number of parameters
+    total_params = sum(param.numel() for param in model.parameters())
+    print('\nNum Model Parameters: ', total_params)
 
     ##sanity check
     images, targets = next(iter(trainloader))
@@ -101,15 +123,6 @@ if __name__ == "__main__":
     print('Num Targets: ', len(targets))
     print('Shape of Images ', images[0].shape)
     print('Shape of Targets ', targets[0]['labels'].shape)
-
-    ##hyperparameters
-    lr = 0.0001
-    momentum = 0.9
-    weight_decay = 0.0005
-    step_size = 3
-    gamma = 0.1
-    num_epochs = 20
-    print_freq = 1000
 
     ##define optimizer
     params = [p for p in model.parameters() if p.requires_grad]
