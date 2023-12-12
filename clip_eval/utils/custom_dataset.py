@@ -7,13 +7,16 @@ import pandas as pd
 from tqdm import tqdm
 
 import torch
+from PIL import Image
 from skimage import io, transform
+from torchvision.io import read_image, ImageReadMode
+from skimage.transform import resize
 from torch.utils.data import Dataset, DataLoader
 
 class CustomDataset(Dataset):
     """Face Landmarks dataset."""
 
-    def __init__(self, root, tag):
+    def __init__(self, root, tag, transforms=None):
         """
         Arguments:
             csv_file (string): Path to the csv file with annotations.
@@ -33,7 +36,7 @@ class CustomDataset(Dataset):
             self.string_to_num[clss] = i
 
         #store transforms
-        self.transform = transform
+        self.transforms = transforms
 
         ##get all images fromfolder
         self._get_images_from_folder()
@@ -59,13 +62,21 @@ class CustomDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
         image = io.imread(self.df.iloc[idx, 1])
+        # image = resize(image, (128, 128), anti_aliasing=True)
+
+        ##transform data
+        if self.transforms:
+            image = Image.fromarray(image.astype('uint8'))
+            image = self.transforms(image)
+
+        # image = read_image(self.df.iloc[idx, 1], mode=ImageReadMode.RGB)
         label = self.df.iloc[idx, 0]
         return image, label
 
     def collate_fn(self, batch):
         return tuple(zip(*batch))
 
-
+'''
 ##Example Use-Case
 if __name__ == "__main__":
 
@@ -81,3 +92,8 @@ if __name__ == "__main__":
 
     valloader = DataLoader(val_data, batch_size=32, collate_fn=val_data.collate_fn,
                             shuffle=True)
+
+    ##sanity check
+    images, targets = next(iter(trainloader))
+    images, targets = next(iter(valloader))
+'''
